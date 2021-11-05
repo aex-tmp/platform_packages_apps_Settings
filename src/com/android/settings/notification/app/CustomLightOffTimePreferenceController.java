@@ -20,31 +20,38 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.provider.Settings;
-
 import androidx.preference.Preference;
 
 import com.android.settings.core.PreferenceControllerMixin;
 import com.android.settings.notification.NotificationBackend;
 import com.android.settingslib.RestrictedSwitchPreference;
+import com.android.settingslib.core.lifecycle.Lifecycle;
+import com.android.settingslib.core.lifecycle.LifecycleObserver;
+import com.android.settingslib.core.lifecycle.events.OnResume;
 
-public class LightsPreferenceController extends NotificationPreferenceController
+import org.aospextended.support.preference.CustomSeekBarPreference;
+
+public class CustomLightOffTimePreferenceController extends NotificationPreferenceController
         implements PreferenceControllerMixin, Preference.OnPreferenceChangeListener {
 
-    boolean blink_light = false;
+    private static final String KEY_LIGHTS_OFF_TIME = "custom_light_off_time";
 
+    private int mLedColor = 0;
     private int mLedColorTemp = 0;
-    private int mLightOnTimeTemp = 0;
-    private int mLightOffTimeTemp = 0;
 
-    private static final String KEY_LIGHTS = "lights";
+    public static int mLightOffTimeTemp = 0;
 
-    public LightsPreferenceController(Context context, NotificationBackend backend) {
+    public CustomLightOffTimePreferenceController(Context context, NotificationBackend backend) {
         super(context, backend);
     }
 
     @Override
     public String getPreferenceKey() {
-        return KEY_LIGHTS;
+        return KEY_LIGHTS_OFF_TIME;
+    }
+
+    public static int getLightOffTimeTemp() {
+        return mLightOffTimeTemp;
     }
 
     @Override
@@ -59,28 +66,27 @@ public class LightsPreferenceController extends NotificationPreferenceController
                 && canPulseLight();
     }
 
-    @Override
-    boolean isIncludedInFilter() {
-        return mPreferenceFilter.contains(NotificationChannel.EDIT_LOCKED_DEVICE);
-    }
-
     public void updateState(Preference preference) {
         if (mChannel != null) {
-            RestrictedSwitchPreference pref = (RestrictedSwitchPreference) preference;
-            pref.setDisabledByAdmin(mAdmin);
-            pref.setEnabled(!pref.isDisabledByAdmin());
-            pref.setChecked(mChannel.shouldShowLights());
+            //light off time pref
+            CustomSeekBarPreference mLightOffTime = (CustomSeekBarPreference) preference;
+            int lightOff = mChannel.getLightOffTime();
+            int defaultLightOff = mContext.getResources().getInteger(
+                    com.android.internal.R.integer.config_defaultNotificationLedOff);
+            mLightOffTime.setDefaultValue(defaultLightOff);
+            lightOff = lightOff == 0 ? defaultLightOff : lightOff;
+            mLightOffTime.setValue(lightOff);
         }
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (mChannel != null) {
-            final boolean lights = (Boolean) newValue;
-	    blink_light = lights;
-            showLedPreview();
-            mChannel.enableLights(lights);
+            int val = (Integer) newValue;
+            mChannel.setLightOffTime(val);
             saveChannel();
+            showLedPreview();
+	    mLightOffTimeTemp = val;
         }
         return true;
     }
@@ -91,21 +97,19 @@ public class LightsPreferenceController extends NotificationPreferenceController
             return false;
         }
         return Settings.System.getInt(mContext.getContentResolver(),
-                Settings.System.NOTIFICATION_LIGHT_PULSE, 0) == 1;
+                Settings.System.NOTIFICATION_LIGHT_PULSE, 1) == 1;
     }
 
     private void showLedPreview() {
-        if (blink_light == true) {
+        if (mChannel.shouldShowLights()) {
 		mLedColorTemp = CustomLightsPreferenceController.getLedColorTemp();
-		mLightOnTimeTemp = CustomLightOnTimePreferenceController.getLightOnTimeTemp();
-		mLightOffTimeTemp = CustomLightOffTimePreferenceController.getLightOffTimeTemp();
             if (mContext.getResources()
                 .getBoolean(com.android.internal.R.bool.config_multicolorled)) {
                     mNm.forcePulseLedLight(
-                            mLedColorTemp, mLightOnTimeTemp, mLightOffTimeTemp);
+                            mLedColorTemp, mChannel.getLightOnTime(), mChannel.getLightOffTime());
 	    } else {
                     mNm.forcePulseLedLight(
-                            0xFFFFFFFF, mLightOnTimeTemp, mLightOffTimeTemp);
+                            0xFFFFFFFF, mChannel.getLightOnTime(), mChannel.getLightOffTime());
 	    }
         } else {
             mNm.forcePulseLedLight(
@@ -113,4 +117,8 @@ public class LightsPreferenceController extends NotificationPreferenceController
         }
     }
 
+    @Override
+    boolean isIncludedInFilter() {
+        return false;
+    }
 }

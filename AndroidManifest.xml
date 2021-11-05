@@ -1992,6 +1992,10 @@
             android:label="@string/lockpassword_choose_lock_generic_header"
             android:excludeFromRecents="true" />
 
+        <activity android:name=".password.ChooseLockPatternSize"
+            android:exported="false"
+            android:theme="@style/GlifTheme.Light" />
+
         <activity android:name=".password.SetupChooseLockPattern"
             android:exported="false"
             android:theme="@style/GlifTheme.Light" />
@@ -3592,6 +3596,14 @@
                 </intent-filter>
                 <intent-filter>
                     <action android:name="android.settings.panel.action.VOLUME" />
+                    <category android:name="android.intent.category.DEFAULT" />
+                </intent-filter>
+                <intent-filter>
+                    <action android:name="android.settings.panel.action.MOBILE_DATA" />
+                    <category android:name="android.intent.category.DEFAULT" />
+                </intent-filter>
+                <intent-filter>
+                    <action android:name="android.settings.panel.action.BLUETOOTH" />
                     <category android:name="android.intent.category.DEFAULT" />
                 </intent-filter>
         </activity>
